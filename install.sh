@@ -1,7 +1,6 @@
 #!/bin/bash
 
 author=suoha29-blip
-# github=https://github.com/suoha29-blip/sing-box
 
 # bash fonts colors
 red='\e[31m'
@@ -166,36 +165,51 @@ install_pkg() {
     fi
 }
 
+# download with multiple mirrors fallback
+# usage: _download_multi <name> <tmpfile> <is_ok> <url1> [url2] [url3] ...
+_download_multi() {
+    local _name=$1
+    local _tmp=$2
+    local _ok=$3
+    shift 3
+    local _urls=("$@")
+    for _url in "${_urls[@]}"; do
+        msg warn "下载 ${_name} > ${_url}"
+        if _wget -t 2 -q -c "$_url" -O "$_tmp"; then
+            mv -f "$_tmp" "$_ok"
+            return 0
+        fi
+        msg warn "失败, 尝试下一个源..."
+    done
+    return 1
+}
+
 # download file
 download() {
     case $1 in
     core)
         [[ ! $is_core_ver ]] && is_core_ver=$(_wget -qO- "https://api.github.com/repos/${is_core_repo}/releases/latest?v=$RANDOM" | grep tag_name | grep -E -o 'v([0-9.]+)')
-        [[ $is_core_ver ]] && link="https://ghproxy.net/https://github.com/${is_core_repo}/releases/download/${is_core_ver}/${is_core}-${is_core_ver:1}-linux-${is_arch}.tar.gz"
-        name=$is_core_name
-        tmpfile=$tmpcore
-        is_ok=$is_core_ok
+        if [[ $is_core_ver ]]; then
+            local suffix="${is_core}-${is_core_ver:1}-linux-${is_arch}.tar.gz"
+            _download_multi "$is_core_name" "$tmpcore" "$is_core_ok" \
+                "https://ghproxy.net/https://github.com/${is_core_repo}/releases/download/${is_core_ver}/${suffix}" \
+                "https://ghproxy.com/https://github.com/${is_core_repo}/releases/download/${is_core_ver}/${suffix}" \
+                "https://moeyy.cn/gh-proxy/https://github.com/${is_core_repo}/releases/download/${is_core_ver}/${suffix}" \
+                "https://github.com/${is_core_repo}/releases/download/${is_core_ver}/${suffix}"
+        fi
         ;;
     sh)
-        link=https://github.com/${is_sh_repo}/releases/latest/download/code.tar.gz
-        name="$is_core_name 脚本"
-        tmpfile=$tmpsh
-        is_ok=$is_sh_ok
+        _download_multi "$is_core_name 脚本" "$tmpsh" "$is_sh_ok" \
+            "https://github.com/${is_sh_repo}/releases/latest/download/code.tar.gz"
         ;;
     jq)
-        link=https://ghproxy.net/https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-$is_arch
-        name="jq"
-        tmpfile=$tmpjq
-        is_ok=$is_jq_ok
+        _download_multi "jq" "$tmpjq" "$is_jq_ok" \
+            "https://ghproxy.net/https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-$is_arch" \
+            "https://ghproxy.com/https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-$is_arch" \
+            "https://moeyy.cn/gh-proxy/https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-$is_arch" \
+            "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-$is_arch"
         ;;
     esac
-
-    [[ $link ]] && {
-        msg warn "下载 ${name} > ${link}"
-        if _wget -t 3 -q -c $link -O $tmpfile; then
-            mv -f $tmpfile $is_ok
-        fi
-    }
 }
 
 # get server ip
