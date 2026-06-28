@@ -32,17 +32,17 @@ warn() {
 }
 
 # root
-[[ $EUID != 0 ]] && err "当前非 ${yellow}ROOT用户.${none}"
+[[ $EUID != 0 ]] && err "请使用 ${yellow}ROOT用户.${none}"
 
 # apt-get, yum, zypper or apk
 cmd=$(type -P apt-get || type -P yum || type -P zypper || type -P apk)
-[[ ! $cmd ]] && err "此脚本仅支持 ${yellow}(Ubuntu or Debian or CentOS or SUSE or Alpine)${none}."
+[[ ! $cmd ]] && err "不支持包管理器 ${yellow}(Ubuntu or Debian or CentOS or SUSE or Alpine)${none}."
 
 # systemd or openrc
 is_systemd=$(type -P systemctl)
 is_openrc=$(type -P rc-service)
 [[ ! $is_systemd && ! $is_openrc ]] && {
-    err "此系统缺少 ${yellow}(systemctl 或 rc-service)${none}, 请安装 systemd 或确认 OpenRC 已启用."
+    err "不支持服务管理器 ${yellow}(systemctl 或 rc-service)${none}, 请安装 systemd 或启用 OpenRC 后再试."
 }
 
 # wget installed or none
@@ -57,7 +57,7 @@ amd64 | x86_64)
     is_arch=arm64
     ;;
 *)
-    err "此脚本仅支持 64 位系统..."
+    err "不支持非 64 位架构...."
     ;;
 esac
 
@@ -107,7 +107,7 @@ _wget() {
     wget --no-check-certificate $*
 }
 
-# print a mesage
+# print a message
 msg() {
     case $1 in
     warn)
@@ -121,17 +121,17 @@ msg() {
         ;;
     esac
 
-    echo -e "${color}$(date +'%T')${none}) ${2}"
+    echo -e "${color}$(date +'%T')${none}) $2"
 }
 
 # show help msg
 show_help() {
     echo -e "Usage: $0 [-f xxx | -l | -p xxx | -v xxx | -h]"
-    echo -e "  -f, --core-file <path>          自定义 $is_core_name 文件路径, e.g., -f /root/$is_core-linux-amd64.tar.gz"
-    echo -e "  -l, --local-install             本地获取安装脚本, 使用当前目录"
+    echo -e "  -f, --core-file <path>          指定 $is_core_name 文件路径, e.g., -f /root/$is_core-linux-amd64.tar.gz"
+    echo -e "  -l, --local-install             本地安装执行脚本, 使用当前目录"
     echo -e "  -p, --proxy <addr>              使用代理下载, e.g., -p http://127.0.0.1:2333"
-    echo -e "  -v, --core-version <ver>        自定义 $is_core_name 版本, e.g., -v v1.8.13"
-    echo -e "  -h, --help                      显示此帮助界面\n"
+    echo -e "  -v, --core-version <ver>        指定 $is_core_name 版本, e.g., -v v1.8.13"
+    echo -e "  -h, --help                      查看更多帮助信息\n"
 
     exit 0
 }
@@ -171,7 +171,7 @@ download() {
     case $1 in
     core)
         [[ ! $is_core_ver ]] && is_core_ver=$(_wget -qO- "https://api.github.com/repos/${is_core_repo}/releases/latest?v=$RANDOM" | grep tag_name | grep -E -o 'v([0-9.]+)')
-        [[ $is_core_ver ]] && link="https://github.com/${is_core_repo}/releases/download/${is_core_ver}/${is_core}-${is_core_ver:1}-linux-${is_arch}.tar.gz"
+        [[ $is_core_ver ]] && link="https://ghproxy.net/https://github.com/${is_core_repo}/releases/download/${is_core_ver}/${is_core}-${is_core_ver:1}-linux-${is_arch}.tar.gz"
         name=$is_core_name
         tmpfile=$tmpcore
         is_ok=$is_core_ok
@@ -183,7 +183,7 @@ download() {
         is_ok=$is_sh_ok
         ;;
     jq)
-        link=https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-$is_arch
+        link=https://ghproxy.net/https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-$is_arch
         name="jq"
         tmpfile=$tmpjq
         is_ok=$is_jq_ok
@@ -210,9 +210,9 @@ check_status() {
     [[ ! -f $is_pkg_ok ]] && {
         msg err "安装依赖包失败"
         if [[ $cmd =~ apk ]]; then
-            msg err "请尝试手动安装依赖包: apk update; apk add $is_pkg"
+            msg err "尝试手动安装依赖包: apk update; apk add $is_pkg"
         else
-            msg err "请尝试手动安装依赖包: $cmd update -y; $cmd install -y $is_pkg"
+            msg err "尝试手动安装依赖包: $cmd update -y; $cmd install -y $is_pkg"
         fi
         is_fail=1
     }
@@ -255,45 +255,45 @@ pass_args() {
         case $1 in
         -f | --core-file)
             [[ -z $2 ]] && {
-                err "($1) 缺少必需参数, 正确使用示例: [$1 /root/$is_core-linux-amd64.tar.gz]"
+                err "($1) 参数值不能为空, 正确使用: [$1 /root/$is_core-linux-amd64.tar.gz]"
             } || [[ ! -f $2 ]] && {
-                err "($2) 不是一个常规的文件."
+                err "($2) 不是一个有效的文件."
             }
             is_core_file=$2
             shift 2
             ;;
         -l | --local-install)
             [[ ! -f ${PWD}/src/core.sh || ! -f ${PWD}/$is_core.sh ]] && {
-                err "当前目录 (${PWD}) 非完整的脚本目录."
+                err "当前目录 (${PWD}) 没有正确的脚本文件."
             }
             local_install=1
             shift 1
             ;;
         -p | --proxy)
             [[ -z $2 ]] && {
-                err "($1) 缺少必需参数, 正确使用示例: [$1 http://127.0.0.1:2333 or -p socks5://127.0.0.1:2333]"
+                err "($1) 参数值不能为空, 正确使用: [$1 http://127.0.0.1:2333 or -p socks5://127.0.0.1:2333]"
             }
             proxy=$2
             shift 2
             ;;
         -v | --core-version)
             [[ -z $2 ]] && {
-                err "($1) 缺少必需参数, 正确使用示例: [$1 v1.8.13]"
+                err "($1) 参数值不能为空, 正确使用: [$1 v1.8.13]"
             }
-            is_core_ver=v${2//v/}
+            is_core_ver=v${2#v}
             shift 2
             ;;
         -h | --help)
             show_help
             ;;
         *)
-            echo -e "\n${is_err} ($@) 为未知参数...\n"
+            echo -e "\n${is_err} ($@) 是未知参数...\n"
             show_help
             ;;
         esac
     done
     [[ $is_core_ver && $is_core_file ]] && {
-        err "无法同时自定义 ${is_core_name} 版本和 ${is_core_name} 文件."
+        err "不能同时指定 ${is_core_name} 版本和 ${is_core_name} 文件."
     }
 }
 
@@ -301,9 +301,9 @@ pass_args() {
 exit_and_del_tmpdir() {
     rm -rf $tmpdir
     [[ ! $1 ]] && {
-        msg err "哦豁.."
-        msg err "安装过程出现错误..."
-        echo -e "反馈问题) https://github.com/${is_sh_repo}/issues"
+        msg err "出错.."
+        msg err "安装失败请提交 issues..."
+        echo -e "反馈地址) https://github.com/${is_sh_repo}/issues"
         echo
         exit 1
     }
@@ -315,7 +315,7 @@ main() {
 
     # check old version
     [[ -f $is_sh_bin && -d $is_core_dir/bin && -d $is_sh_dir && -d $is_conf_dir ]] && {
-        err "检测到脚本已安装, 如需重装请使用${green} ${is_core} reinstall ${none}命令."
+        err "检测到已经安装, 如果需要请使用 ${green} ${is_core} reinstall ${none}命令."
     }
 
     # check parameters
@@ -341,7 +341,7 @@ main() {
     # local dir install sh script
     [[ $local_install ]] && {
         >$is_sh_ok
-        msg warn "${yellow}本地获取安装脚本 > $PWD ${none}"
+        msg warn "${yellow}本地安装执行脚本 > $PWD ${none}"
     }
 
     if [[ $is_systemd ]]; then
@@ -386,11 +386,11 @@ main() {
         mkdir -p $tmpdir/testzip
         tar zxf $is_core_ok --strip-components 1 -C $tmpdir/testzip &>/dev/null
         [[ $? != 0 ]] && {
-            msg err "${is_core_name} 文件无法通过测试."
+            msg err "${is_core_name} 文件无法解压."
             exit_and_del_tmpdir
         }
         [[ ! -f $tmpdir/testzip/$is_core ]] && {
-            msg err "${is_core_name} 文件无法通过测试."
+            msg err "${is_core_name} 文件无法解压."
             exit_and_del_tmpdir
         }
     fi
@@ -438,7 +438,7 @@ main() {
     mkdir -p $is_log_dir
 
     # show a tips msg
-    msg ok "生成配置文件..."
+    msg ok "配置文件准备完毕..."
 
     # create service
     load systemd.sh
