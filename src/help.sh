@@ -84,7 +84,6 @@ about() {
     msg
     msg "网站: $(msg_ul https://suoha29-blip.com)"
     msg "频道: $(msg_ul https://t.me/shfq29)"
-    msg "群组: $(msg_ul https://t.me/tgsuoha29-blip)"
     msg "Github: $(msg_ul https://github.com/${is_sh_repo})"
     msg "$is_core_name site: $(msg_ul https://sing-box.sagernet.org/)"
     msg "$is_core_name core: $(msg_ul https://github.com/${is_core_repo})"
